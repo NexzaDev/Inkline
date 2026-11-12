@@ -357,6 +357,14 @@ Set an APK size budget (arm64 under 60 MB) and make CI report the size on every 
 
 ## 15. Phases
 
+Amendment, November 2026. The owner removed in-app editing from the product: documents are authored as files and Inkline renders them. `docs/adr/0008-reader-only.md` is the record. The phases below are read through it:
+
+- Phase 2 acceptance is "a `.graph` file opens from the device and renders offline with pan and pinch zoom, and nothing in the app edits it", not "created, edited and saved".
+- Phase 3 keeps `graph-core`, `graphctl`, file commands, SAF and file intents, and drops autosave and recovery.
+- Phase 4 loses both modes: there is only the reader. The information sheet on tap stays.
+- Phase 6 keeps import, export and JSON Canvas conversion as offline transforms of the file, and the code view becomes the authoring path rather than a preview of an editor.
+- Everything that assumes the editor can write, in this brief or in `docs/ARCHITECTURE.md`, is void.
+
 Complete the phases in order. Each ends with a short report to the owner in Greek: what was done, what was verified, what was not, what comes next. Do not start the next phase before the current one meets its acceptance criteria.
 
 **Phase 0: Reconnaissance.** Read this file, the unslop skill, and the draw.io source. Produce `docs/ARCHITECTURE.md` and the first ADRs. Report what you learned about the embed protocol, the viewer, the plugin mechanism and the build state of `src/main/webapp` (confirm whether minified bundles are committed or must be built). List open questions.

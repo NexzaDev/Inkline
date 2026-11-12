@@ -55,8 +55,8 @@ every other vendored file is byte-identical to the tag.
 
 `web/editor/hooks/PreConfig.js` sets the public build flag, nulls the export,
 viewer, lightbox and base URLs so nothing looks for a server, keeps the local
-math typesetting path, allows plugins, and forces manual save so the editor never
-saves to its own storage behind Inkline's back.
+math typesetting path, allows plugins, and sets `sync=manual` so the editor never
+opens a connection to a storage backend behind Inkline's back.
 
 `web/editor/hooks/PostConfig.js` keeps upstream's nulling of the icon search and
 icon service endpoints.

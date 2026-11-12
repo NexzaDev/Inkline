@@ -14,9 +14,10 @@ Every claim about draw.io below was read in the pinned source at
 `jgraph/drawio` tag `v32.6.10` (commit `c72c9a98b7a6ce392556ed04c05e0ff19f43f5c3`);
 file and line references point into `src/main/webapp` of that tag.
 
-Phase status: this is a Phase 0 document. It records design, not implementation.
-Nothing here has been built or run on a device yet, except where the
-verification section says otherwise.
+Phase status: this is a living document. It records design and the parts that
+have been built, and it changes when the product does. ADR 0008 changed the
+product once already; sections 4, 5 and 6 describe the reader that exists, not
+the editor that was planned.
 
 ## 1. Constraints that shape every decision
 
@@ -33,9 +34,9 @@ verification section says otherwise.
 4. **Untrusted input.** A `.graph` file can arrive from a chat app, a browser
    download or a file manager. Parsing must be bounded, must reject DTDs and
    entities, and must never panic.
-5. **Touch first, one hand and two.** The editor keeps all of its capabilities,
-   but its presentation is tuned for fingers: large hit areas, no hover-only
-   affordances, an on-screen toolbar, and pan and pinch zoom everywhere.
+5. **Touch first, one hand and two.** Reading is a gesture: one finger pans,
+   two fingers pinch, and the two never conflict. There is no hover, no right
+   click and no keyboard, so anything that depends on them does not exist.
 
 ## 2. Layer map
 
@@ -51,13 +52,12 @@ verification section says otherwise.
 │  graph-core (pure Rust, also compiled into graphctl)                 │
 ├──────────────────────────────────────────────────────────────────────┤
 │ Shell UI — TypeScript + Vite + Preact, served from app assets         │
-│  home · files · preview chrome · settings · code view · loading       │
+│  reader screen · open dialog · status bar · loading                   │
 │  bridge (typed message layer, one module, no globals)                │
 ├──────────────────────────────────────────────────────────────────────┤
 │ Editor frame — separate document, same origin, app assets only        │
-│  web/editor/vendor/drawio/index.html?embed=1&proto=json...            │
-│  web/editor/plugin/inkline-plugin.js  (loaded through ?p=)            │
-│  web/editor/styles/inkline-editor.css (injected as config.customCss)  │
+│  web/editor/vendor/drawio/index.html?embed=1&proto=json&chrome=0...   │
+│  web/editor/hooks/{PreConfig,PostConfig}.js (editor deployment hooks)  │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -78,9 +78,9 @@ editor smoke test in CI enforce.
 ## 4. The editor integration contract
 
 ADR 0008 changed the product: Inkline renders documents and does not edit them.
-The frame below is therefore the reader configuration. Everything in 4.2 to 4.6
-that describes editing, saving and autosave is superseded by that record and is
-kept because it documents what the vendored editor does.
+The frame below is the reader configuration. Where a mechanism the vendored
+editor still supports is described, it is described as the editor's own
+behaviour, not as something Inkline sends.
 
 ### 4.1 Frame URL
 
@@ -140,30 +140,21 @@ difference is recorded in `docs/adr/0001-vendor-drawio.md`.
 
 ```
 shell                                   editor frame
-  │ create iframe (hidden)                    │
+  │ create iframe when a document is open    │
   │──────────────────────────────────────────▶│ app.min.js boots
   │                                           │ PreConfig.js: DRAWIO_CONFIG
-  │                                           │ plugin registers inkline actions
   │◀──────────── {event:'init'} ──────────────│
   │                                           │
-  │──── {action:'load', xml, autosave:1, ────▶│ setFileData, fit/viewbox, diff base
-  │      zoomEvents:true, title, dark,        │
-  │      viewbox|fit, viewport}               │
-  │◀──── {event:'load', xml, bounds, ─────────│ loading screen hands off
-  │       modelBounds, scale, pageVisible,    │
-  │       currentPage, page, containerSize}   │
+  │──── {action:'load', xml} ────────────────▶│ setFileData, chromeless view
+  │◀──────────── {event:'load'} ──────────────│ loading screen hands off
   │                                           │
-  │◀──── {event:'autosave', xml, ...} ────────│ on every model change
-  │◀──── {event:'zoom', scale, ...} ──────────│ on zoom changes
-  │                                           │
-  │──── {action:'invokeAction', ─────────────▶│ runs the named editor action
-  │      actionName:'save'}                   │
-  │◀──── {event:'save', xml, ...} ────────────│ shell writes through Rust
-  │                                           │
-  │──── {action:'fit'} / {action:'viewbox'} ─▶│ viewport commands
-  │──── {action:'invokeAction', ──────────────▶│ inklinePreviewEnter / Exit
-  │      actionName:'inklinePreviewEnter'}     │
+  │        no further traffic                 │ pan and pinch zoom are local
 ```
+
+That is the whole protocol. The frame is created only when a document is
+open, so a launch with no document never pays for it. If `load` does not arrive
+within twenty seconds the shell shows a failure state with a retry, rather than
+an empty canvas the owner cannot diagnose.
 
 `configure=1` is not used. The editor's configuration arrives through
 `window.DRAWIO_CONFIG`, set in `PreConfig.js`, so the frame does not have to
@@ -174,78 +165,57 @@ rather than mutating a live editor.
 
 ### 4.3 Actions the shell may send
 
-| Action | Purpose | Source |
-| --- | --- | --- |
-| `load` | Provide the document and view options | `js/diagramly/EditorUi.js:32447` |
-| `invokeAction` | Run any editor action by name, no arguments | `js/diagramly/EditorUi.js:31937` |
-| `fit` | Fit the diagram to the viewport | `js/diagramly/EditorUi.js:31963` |
-| `viewbox` | Show an exact model region | `js/diagramly/EditorUi.js:31977` |
-| `snapshot` | Raster snapshot for thumbnails | `js/diagramly/EditorUi.js:32024` |
-| `export` | SVG or PNG through the export pipeline | `js/diagramly/EditorUi.js:32030` |
-| `resetEditor` | Stop editing, clear selection and menus | `js/diagramly/EditorUi.js:31947` |
-| `merge` | Merge XML into the open document | `js/diagramly/EditorUi.js:32876` |
-| `patch`, `getDiff`, `resetDiff` | Diff-based sync, if ever needed | `js/diagramly/EditorUi.js:32914` |
+| Action | Purpose              | Source                           |
+| ------ | -------------------- | -------------------------------- |
+| `load` | Provide the document | `js/diagramly/EditorUi.js:32447` |
 
-`load` options Inkline uses: `autosave: 1`, `zoomEvents: true`,
-`title`, `dark`, `fit` or `viewbox`, `viewport`, `border`, `noSaveBtn: 1`,
-`saveAndExit: 0`, and `modified: '0'`. Diff sync is left off: one editor frame
-at a time edits a document, so patches buy nothing and add a second
-serialisation format to reason about.
+`load` carries `xml` and nothing else. The reader does not send `fit`,
+`viewbox`, `snapshot`, `export`, `invokeAction`, `resetEditor`, `merge` or the
+diff actions. The editor's remaining actions exist only in editable mode, and
+the shell has no surface for them: a reader with buttons is an editor with its
+most important button missing.
+
+The frame is left to fit the diagram itself, as it does on `load`. The owner's
+gesture is pan and pinch; anything the shell decided about the viewport would be
+undone by the first pinch anyway.
 
 ### 4.4 Events the frame sends
 
-`init`, `load`, `autosave`, `save`, `exit`, `zoom`, `export`, `openLink`,
-`resize`, `configure`, plus dialog events Inkline does not use (`draft`,
-`template`, `textContent`, `prompt`, `shortcut`).
-
-The state envelope carried by most of them is built by
-`createLoadMessage` (`js/diagramly/EditorUi.js:30719`) and contains `bounds`,
-`modelBounds`, `scale`, `translate`, `pageVisible`, `currentPage`, `page` and
-`containerSize`. `containerSize` is what the shell uses to decide whether the
-editor's panels fit; `modelBounds` is what it uses for thumbnails.
+`init` and `load` are the only events the shell reads. `autosave`, `save`,
+`exit`, `export`, `zoom`, `resize`, `configure` and the dialog events are still
+emitted by the vendored editor in principle, but a chromeless frame produces
+`init` and `load` and then nothing, and the shell parses the rest to `null` and
+ignores them. This is deliberate: the reader has no state to reconcile, so an
+unknown message is not a bug.
 
 Every message travels as a JSON string, not as an object: the editor posts
 `JSON.stringify(...)` and parses `event.data` back with `JSON.parse`
-(`js/diagramly/EditorUi.js:31566`, `installMessageHandler`), and the shell has to
-do the same in both directions. A bridge that posts objects is ignored without
-an error, and the frame then looks loaded but never answers.
+(`js/diagramly/EditorUi.js:31566`, `installMessageHandler`), and the shell does
+the same in both directions. A bridge that posts objects is ignored without an
+error, and the frame then looks loaded but never answers.
 
-The embedded Save button is gone (`noSaveBtn=1`) and the editor's own save
-action is not used: in this build it writes to the editor's own storage through
-`saveRequest`, which is not where Inkline documents live. Two paths replace it:
-
-- `load` carries `autosave: 1`, which makes the editor post
-  `{event:'autosave', xml}` on every change; that is what marks a document
-  dirty and what Phase 3 will write to the open file.
-- the shell's Save asks for the document explicitly with
-  `{action:'export', format:'xml'}` and receives `{event:'export', xml}`
-  (`createLoadMessage('export')` with the current file data), so the snapshot
-  the shell keeps is produced by the editor, not assembled by the shell.
-
-`{event:'openLink'}` is produced when a link is clicked, and Inkline sets
-`suppressNewWindows: true` so the frame never opens a window itself: links are
-the shell's responsibility (confirm, then `ACTION_VIEW`).
+There is no save path. Not `{action:'export'}`, not `{event:'autosave'}`, not
+`invokeAction:'save'`. The document on disk is the only copy, and the app does
+not write it. ADR 0008 records why.
 
 ### 4.5 Configuration
 
-`Editor.configure` (`js/diagramly/Editor.js:3112`) accepts a large key set.
-Inkline sets, at minimum:
+`window.DRAWIO_CONFIG` is `null` in `PreConfig.js` and the shell never sends
+`configure`. Everything Inkline decides about the frame is a URL parameter, so
+the frame is fully configured before its first script runs and there is no
+handshake that can hang.
 
-| Key | Value | Reason |
-| --- | --- | --- |
-| `compressXml` | `false` | Saves emit uncompressed `<mxGraphModel>`, which the `.graph` format requires (`js/diagramly/Editor.js:3334`) |
-| `defaultFonts`, `enableLocalFonts` | system font families only | No remote font fetch; the default font list points at Google Fonts |
-| `customLibraries`, `defaultLibraries`, `appendCustomLibraries` | Inkline shape library | Custom icons without touching core files |
-| `customCss` | Inkline palette, radii, control sizes | Theming through supported configuration |
-| `resources` | Greek strings the editor should use for Inkline-specific labels | Localisation without editing resource files |
-| `defaultGridSize`, `defaultPageVisible`, `defaultGridEnabled` | from Inkline settings | Document defaults match the app |
-| `noResizers`, `preserveViewState` | `true` | Full-bleed frame; view attributes survive a round trip |
-| `suppressNewWindows` | `true` | Links route to the shell |
-| `zoomWheel`, `enableCssDarkMode` | per theme | Wheel zoom and CSS dark mode follow the Inkline theme |
+`PreConfig.js` sets what a local, offline copy needs: `DRAWIO_PUBLIC_BUILD`,
+`EXPORT_URL` and every remote URL to `null`, local math assets, custom plugins
+allowed from `plugin/`, and `sync=manual` so the editor never tries to reach a
+storage backend. `Editor.configure` (`js/diagramly/Editor.js:3112`) is
+documented here only as the escape hatch: a key that cannot be expressed as a
+URL parameter goes into `PreConfig.js`, in one place, and is then a shell
+concern rather than a vendor edit.
 
-Dark mode is applied with `{action:'load', dark:true}` at load and through the
-`ui=dark` / `dark=1` parameters, and tuned with `defaultDarkPageBackgroundColor`
-and `defaultDarkGridColor` so the canvas matches the OLED theme.
+Dark mode is `dark=1`: the editor's own dark palette, which is what the
+vendored CSS already provides. The shell's `--editor-chrome` token matches it so
+the status bar and the canvas read as one surface.
 
 ### 4.6 Touch behaviour found in the source
 
@@ -259,32 +229,27 @@ and `defaultDarkGridColor` so the canvas matches the OLED theme.
 - Splitter hit areas widen on touch (`EditorUi.prototype.splitSize`,
   `js/grapheditor/EditorUi.js:1302`).
 - A compact theme (`ui=min`, `js/diagramly/Minimal.js:18`) exists for narrow
-  viewports. Inkline does not use it: the shell owns the chrome, and the frame
-  runs with `noSaveBtn`, so the theme's toolbar work is redundant.
+  viewports. Inkline does not use it: a chromeless frame has no chrome to
+  compact.
 
-The plugin's job is therefore not to reimplement gestures but to widen what is
-hard to hit: handle sizes, label edit thresholds, long-press menus, and the
-on-screen palette.
+Pinch zoom anchors at the gesture point because `mxPanningHandler` calls
+`zoomAt` there. That is the behaviour the owner asked for, and it is the reason
+no zoom handling exists in the shell: the editor already does it correctly, and
+a second implementation on top of it would fight the first.
 
 ## 5. Modes
 
-One editor frame, one document, two modes, toggled by plugin actions over
-`invokeAction`. `docs/adr/0004-preview-mode.md` records why the viewer bundle is
-not used.
+There is one mode. The frame is chromeless (`chrome=0`), which is the editor's
+own read-only configuration, and there is no edit mode to switch to. ADR 0008
+records why: the owner authors documents as files, and an in-app editor that
+cannot be typed into is worse than none.
 
-- **Edit mode.** The frame is fully enabled. Shell toolbar drives actions
-  (`invokeAction`), the properties panels come from the editor itself.
-- **Preview mode.** The plugin sets `graph.setCellsLocked(true)`,
-  `setCellsMovable(false)`, `setCellsResizable(false)`, `setCellsEditable(false)`,
-  `setCellsBendable(false)`, `setCellsDisconnectable(false)`, `setConnectable(false)`,
-  `setDropEnabled(false)`, then adds a body class that hides the editor's panels
-  and handles. Panning and pinch zoom keep working because they do not consult
-  the graph's enabled state. A tap on a cell is reported to the shell as
-  `{event:'inklineCellTap', cells: [...]}` from the plugin, with the cell's
-  `<object>` attributes, label, tooltip and links already extracted.
+Consequences that are load-bearing elsewhere in this document:
 
-Because the mode is a state of the same frame, switching modes preserves scroll
-position, zoom and page, which is an acceptance criterion in the brief.
+- No panel, no toolbar, no format panel, no text editing, no autosave.
+- Pan, pinch zoom, links and tooltips stay, because they belong to the panning
+  handler rather than to the editing UI.
+- The shell's only controls are `Open` and, on failure, `Try again`.
 
 ## 6. Data flow
 
@@ -304,18 +269,14 @@ tauri-plugin-file-intents (Kotlin)  ──bytes──▶  Rust command
                                                         shell → editor frame (load)
 ```
 
-- The core parses, validates, normalises and writes. The shell only formats and
-  presents a `ValidationReport`.
-- Saves are written by Rust to a temporary file in app storage, verified by
-  re-parsing, then copied to the destination through `ContentResolver`
-  (`docs/ANDROID.md` describes the atomic path).
-- Autosave uses `{event:'autosave'}` payloads. The shell debounces them, stores
-  them under app-private storage together with the document id, and offers them
-  as crash recovery on the next launch. The editor's own autosave machinery is
-  not used, because the file is the shell's responsibility.
-- The `.graph` invariant is enforced on every write: root `<mxfile>` with an
-  Inkline format version attribute, uncompressed `<mxGraphModel>` children, two
-  space indentation, stable attribute order.
+- The core parses and validates. The shell only formats and presents a
+  `ValidationReport`. Nothing in this path writes to the file.
+- Reading is the whole path. A `.graph` file the shell cannot parse is refused
+  before the frame is created, so a malformed document never produces an empty
+  canvas with no explanation.
+- `docs/GRAPH_FORMAT.md` will define what the shell accepts on read: root
+  `<mxfile>` (optional XML declaration), at least one page, and the attributes
+  the editor requires to render.
 
 ## 7. Security model
 
@@ -393,43 +354,42 @@ lives in `scripts/vendor-drawio.sh` from Phase 2 and in
 
 ## 10. Open questions
 
-These are recorded rather than guessed. None of them blocks Phase 1.
+These are recorded rather than guessed. None of them blocks a reader.
 
-1. **Keystore.** Release signing needs the four secrets from the brief. Phase 1
-   ships an unsigned debug APK from CI; the signed path waits for the owner.
+1. **Keystore.** Release signing needs the four secrets from the brief. Until
+   the owner has one, CI ships an unsigned debug APK and Android shows its own
+   debugging notice.
 2. **Rust toolchain in this sandbox.** `static.rust-lang.org` and
    `sh.rustup.rs` are unreachable here, so `cargo` cannot be installed. Whether
    a toolchain can be fetched from a GitHub release asset instead is unverified.
    Until it is, Rust work is verified in CI only.
-3. **Clipboard behaviour in the WebView.** draw.io uses a hidden `contentEditable`
-   element for native clipboard handling, with `useInternalClipboard` as the
-   fallback. Which one behaves on Android System WebView, and whether the
-   system clipboard is reachable at all, has to be tested on a device.
-4. **Stylus and palm rejection.** WebView exposes pointer events; whether
-   `pointerType` survives on the owner's device, and whether palm rejection is
-   worth code at all, is a device question.
-5. **`templates/` (5.6 MB).** Kept for now so the editor's template dialog works.
-   If the shell's own template flow replaces it, dropping the directory saves
-   more than a tenth of the vendor payload. Decided in Phase 5.
+3. **What `chrome=0` does to a document that uses web fonts.** A document with
+   an `extFonts` list cannot fetch it, so the reader renders the fallback face.
+   Whether that is acceptable or whether the authoring side must embed the
+   fonts is a format question for `docs/GRAPH_FORMAT.md`.
+4. **`templates/` (5.6 MB).** The reader never opens the template dialog, so
+   this directory is dead payload. Removing it needs a check that `index.html`
+   does not reference it in the chromeless path, and a re-run of the vendoring
+   manifest.
+5. **Stylus and palm rejection.** WebView exposes pointer events; whether
+   `pointerType` survives on the owner's device is a device question. Panning
+   with a palm resting on the screen is the case to test.
 
 ## 11. References
 
 Pinned tag, path relative to `src/main/webapp`:
 
-| Topic | Location |
-| --- | --- |
-| Bootstrap and bundle loading | `js/bootstrap.js:359`, `js/bootstrap.js:408` |
-| Embed message handler | `js/diagramly/EditorUi.js:31566` |
-| Load action | `js/diagramly/EditorUi.js:32447` |
-| Autosave event | `js/diagramly/EditorUi.js:33091` |
-| Init event | `js/diagramly/EditorUi.js:33274` |
-| Open link event | `js/diagramly/EditorUi.js:33286` |
-| State envelope | `js/diagramly/EditorUi.js:30719` |
-| Embed save override | `js/diagramly/Menus.js:3327` |
-| Configure handshake | `js/diagramly/App.js:1621` |
-| Plugin loading | `js/diagramly/App.js:1800`, `js/diagramly/Init.js:79` |
-| Editor configuration | `js/diagramly/Editor.js:3112` |
-| Compression default | `js/diagramly/Editor.js:3334` |
-| Remote export default | `js/diagramly/Init.js:34` |
-| Touch detection | `mxgraph/src/mxClient.js:187`, `js/grapheditor/Graph.js:1785` |
-| Greek language file | `resources/dia_el.txt` |
+| Topic                               | Location                                                                     |
+| ----------------------------------- | ---------------------------------------------------------------------------- |
+| Bootstrap and bundle loading        | `js/bootstrap.js:359`, `js/bootstrap.js:408`                                 |
+| Embed message handler               | `js/diagramly/EditorUi.js:31566`                                             |
+| Load action                         | `js/diagramly/EditorUi.js:32447`                                             |
+| Init event                          | `js/diagramly/EditorUi.js:33274`                                             |
+| Chromeless and editable             | `js/diagramly/EditorUi.js` constructor, `this.editable = null != e ? e : !a` |
+| Autosave event (unused)             | `js/diagramly/EditorUi.js:33091`                                             |
+| Open link event (unused)            | `js/diagramly/EditorUi.js:33286`                                             |
+| State envelope (unused)             | `js/diagramly/EditorUi.js:30719`                                             |
+| Editor configuration (escape hatch) | `js/diagramly/Editor.js:3112`                                                |
+| Plugin loading (not used)           | `js/diagramly/App.js:1800`, `js/diagramly/Init.js:79`                        |
+| Touch detection                     | `mxgraph/src/mxClient.js:187`, `js/grapheditor/Graph.js:1785`                |
+| Greek language file                 | `resources/dia_el.txt`                                                       |
