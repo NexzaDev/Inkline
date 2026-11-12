@@ -10,6 +10,8 @@ pub const MAX_DOCUMENT_BYTES: usize = 32 * 1024 * 1024;
 
 pub const MAX_IMAGE_BYTES: usize = 8 * 1024 * 1024;
 
+const _: () = assert!(MAX_IMAGE_BYTES < MAX_DOCUMENT_BYTES);
+
 pub const fn is_supported_format_version(declared: u16) -> bool {
     declared >= 1 && declared <= FORMAT_VERSION
 }
@@ -37,10 +39,5 @@ mod tests {
     #[test]
     fn zero_is_rejected() {
         assert!(!is_supported_format_version(0));
-    }
-
-    #[test]
-    fn image_limit_stays_below_document_limit() {
-        assert!(MAX_IMAGE_BYTES < MAX_DOCUMENT_BYTES);
     }
 }

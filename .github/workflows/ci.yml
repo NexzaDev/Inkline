@@ -174,7 +174,7 @@ jobs:
       - name: Build the APK
         env:
           NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
-        run: npx tauri android build --debug --apk --target aarch64 --ci
+        run: scripts/ci/capture.sh "android build" npx tauri android build --debug --apk --target aarch64 --ci
 
       - name: Report APK size
         run: |
