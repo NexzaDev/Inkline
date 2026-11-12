@@ -55,7 +55,7 @@ export function EditorScreen({ language }: { readonly language: EditorLanguage }
         ref={pickerRef}
         class="editor-picker"
         type="file"
-        accept=".graph,.xml,application/xml,text/xml"
+        accept="*/*"
         onChange={(event) => {
           void open(event.currentTarget.files?.[0]);
           event.currentTarget.value = "";

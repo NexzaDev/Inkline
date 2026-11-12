@@ -249,7 +249,11 @@ Consequences that are load-bearing elsewhere in this document:
 - No panel, no toolbar, no format panel, no text editing, no autosave.
 - Pan, pinch zoom, links and tooltips stay, because they belong to the panning
   handler rather than to the editing UI.
-- The shell's only controls are `Open` and, on failure, `Try again`.
+- The shell's only controls are `Open` and, on failure, `Try again`. `Open` is
+  the WebView's own file input, whose `accept` is `*/*`: Android has no MIME
+  type for `.graph`, so a MIME filter greys out the very files the app exists to
+  read. `readGraphDocument` is the gate, and it accepts a root `<mxfile>` or
+  `<mxGraphModel>` behind an optional XML declaration.
 
 ## 6. Data flow
 
