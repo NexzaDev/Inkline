@@ -109,6 +109,9 @@ export function editorFrameSource(language: EditorLanguage): string {
     saveAndExit: "0",
     noExitBtn: "1",
     modified: "0",
+    dark: "1",
+    pv: "0",
+    grid: "0",
     lang: language,
   });
 

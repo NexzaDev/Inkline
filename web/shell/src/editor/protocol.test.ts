@@ -87,6 +87,14 @@ describe("editorFrameSource", () => {
     expect(parameters.get("modified")).toBe("0");
   });
 
+  it("draws on a fixed dark surface instead of a moving page", () => {
+    const parameters = new URL(editorFrameSource("en"), "http://localhost").searchParams;
+
+    expect(parameters.get("dark")).toBe("1");
+    expect(parameters.get("pv")).toBe("0");
+    expect(parameters.get("grid")).toBe("0");
+  });
+
   it("never asks the editor to run in its own offline mode", () => {
     expect(editorFrameSource("en")).not.toContain("offline");
   });

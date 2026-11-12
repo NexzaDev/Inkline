@@ -89,7 +89,9 @@ web/editor/vendor/drawio/index.html
   &saveAndExit=0
   &noExitBtn=1
   &modified=0
-  &p=../../plugin/inkline-plugin.js
+  &dark=1
+  &pv=0
+  &grid=0
   &lang=en|el
 ```
 
@@ -98,13 +100,23 @@ web/editor/vendor/drawio/index.html
 - `spin=0` suppresses the editor's own spinner. Inkline draws its own loading
   screen and only reveals the frame on the `load` event.
 - `noSaveBtn=1&saveAndExit=0&noExitBtn=1` removes the editor's own action
-  buttons so that one set of controls (the shell's) exists. The save action is
-  still callable; see 4.6.
+  buttons so that one set of controls (the shell's) exists. The document is
+  taken through an xml export instead of the editor's save action; see 4.4.
 - `modified=0` stops the editor from writing status text into its own bar.
-- `p=` loads the Inkline plugin from the app's assets. Loading a plugin from
-  `?p=` requires `window.ALLOW_CUSTOM_PLUGINS = true`, which is set in
-  `PreConfig.js`, and the plugin URL must be same-origin
-  (`js/diagramly/App.js:1800`, `js/diagramly/Init.js:79`).
+- `dark=1` selects the editor's own dark palette, so the chrome matches the
+  shell instead of flashing a light application inside a black one.
+- `pv=0` removes the page sheet and `grid=0` removes the grid. Both are drawn
+  inside the surface that pans and zooms, so they are exactly the things that
+  used to slide under the finger and drift away from the pinch point. What
+  remains is `.geDiagramContainer`'s own CSS background, which never moves:
+  the canvas is one fixed dark surface, and only the shapes drawn on it move
+  and scale. Pinch zoom uses `zoomAt` (`js/PanningHandler`, `mxPanningHandler`),
+  which anchors the scale at the gesture point rather than at the view centre.
+- `p=` will load the Inkline plugin from the app's assets; it is absent until
+  the plugin exists. Loading a plugin from `?p=` requires
+  `window.ALLOW_CUSTOM_PLUGINS = true`, which is set in `PreConfig.js`, and the
+  plugin URL must be same-origin (`js/diagramly/App.js:1800`,
+  `js/diagramly/Init.js:79`).
 - **`offline=1` must not be set.** It disables plugin loading entirely
   (`js/diagramly/App.js:1156`). Offline behaviour is enforced by the absence of
   the `INTERNET` permission and by a WebView request policy, not by that flag.
