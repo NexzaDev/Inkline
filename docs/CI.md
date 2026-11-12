@@ -72,17 +72,23 @@ update cannot silently change the compiler.
 
 | Artifact | Contents | Use |
 | --- | --- | --- |
-| `inkline-debug-apk` | `app-universal-debug.apk` built for `aarch64` | Install on a tablet to check that the app starts |
-| `cargo-lock` | The `Cargo.lock` the job resolved | Committed to the repository once, then kept under version control |
+| `inkline-debug-apk` | `app-universal-debug.apk` built for `aarch64`, kept 14 days | Install on a tablet to check that the app starts |
+| `cargo-lock` | The `Cargo.lock` the job resolved, kept 7 days | Committed to the repository once, then kept under version control |
 
 ## The lockfile
 
-`Cargo.lock` is required for reproducible builds but cannot be generated where
-the project is written, because that environment has no Rust toolchain. The first
-green `Rust core` run publishes it as the `cargo-lock` artifact; it is then
-committed, and from that point the workflows switch to `--locked`. Until then,
-CI resolves dependencies fresh, which is why `cargo generate-lockfile` is an
-explicit step rather than an accident.
+`Cargo.lock` is required for reproducible builds but is not in the repository
+yet, because the environment the project is written in has no Rust toolchain and
+cannot download build artifacts from GitHub Actions. Every `Rust core` run
+resolves the graph explicitly with `cargo generate-lockfile` and publishes the
+result as the `cargo-lock` artifact, unconditionally, so the file is always
+available even from a run that failed later.
+
+Committing it is a deliberate one-time step, done from a machine that can
+download the artifact, and it is the point at which the workflow switches to
+`--locked`. Until that happens each run resolves against whatever crates.io
+published that day, which is why the resolution is an explicit step that shows
+up in the job rather than a side effect of the first `cargo` command.
 
 ## Reading a failure
 

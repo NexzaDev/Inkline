@@ -166,11 +166,6 @@ jobs:
       - name: Install the Android SDK
         uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd
 
-      - name: Inspect the Android SDK
-        run: |
-          scripts/ci/note.sh "installed packages" "$(sdkmanager --list_installed 2>&1 | grep -E 'platforms;|build-tools;|ndk;' | head -n 30)"
-          scripts/ci/note.sh "available build tools" "$(sdkmanager --list 2>&1 | grep -E 'build-tools;3[6-9]' | tail -n 12)"
-
       - name: Install the SDK platform
         run: scripts/ci/capture.sh "android platform" sdkmanager --install "platforms;android-37.0" "platform-tools"
 
@@ -184,12 +179,10 @@ jobs:
             ndk="$(ls -d "$ANDROID_HOME"/ndk/*/ | sort -V | tail -n 1)"
           fi
           printf 'NDK_HOME=%s\n' "${ndk%/}" >> "$GITHUB_ENV"
-          printf 'Chosen NDK: %s\n' "${ndk%/}"
+          scripts/ci/note.sh "android toolchain" "ndk ${ndk%/}; platforms $(ls "$ANDROID_HOME/platforms" | tr '\n' ' '); build tools $(ls "$ANDROID_HOME/build-tools" | tr '\n' ' ')"
 
       - name: Verify the NDK toolchain
-        run: |
-          scripts/ci/note.sh "ndk inventory" "$(ls "$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin" | tail -n 20)"
-          scripts/ci/capture.sh "ndk" "$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android26-clang" --version
+        run: scripts/ci/capture.sh "ndk" "$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android26-clang" --version
 
       - name: Build the APK
         run: scripts/ci/capture.sh "android build" npx tauri android build --debug --apk --target aarch64 --ci
