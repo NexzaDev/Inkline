@@ -1,14 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  byteLength,
   editorFrameSource,
   encodeAction,
-  INITIAL_DIAGRAM,
   loadAction,
   parseEditorEvent,
   readLanguage,
-  exportAction,
 } from "./protocol";
 
 describe("parseEditorEvent", () => {
@@ -17,38 +14,9 @@ describe("parseEditorEvent", () => {
     expect(parseEditorEvent({ event: "load" })).toEqual({ event: "load" });
   });
 
-  it("carries the document out of a save", () => {
-    expect(parseEditorEvent({ event: "save", xml: "<mxfile />" })).toEqual({
-      event: "save",
-      xml: "<mxfile />",
-    });
-  });
-
-  it("reads the document out of an export", () => {
-    expect(parseEditorEvent('{"event":"export","format":"xml","xml":"<mxfile />"}')).toEqual({
-      event: "export",
-      xml: "<mxfile />",
-    });
-  });
-
-  it("treats an autosave as a save", () => {
-    expect(parseEditorEvent({ event: "autosave", xml: "<mxfile />" })).toEqual({
-      event: "autosave",
-      xml: "<mxfile />",
-    });
-  });
-
-  it("rejects a save without a document", () => {
-    expect(parseEditorEvent({ event: "save" })).toBeNull();
-    expect(parseEditorEvent({ event: "save", xml: 42 })).toBeNull();
-  });
-
   it("reads the json strings the editor actually sends", () => {
     expect(parseEditorEvent('{"event":"init"}')).toEqual({ event: "init" });
-    expect(parseEditorEvent('{"event":"save","xml":"<mxfile />"}')).toEqual({
-      event: "save",
-      xml: "<mxfile />",
-    });
+    expect(parseEditorEvent('{"event":"load","xml":"<mxfile />"}')).toEqual({ event: "load" });
   });
 
   it("survives a string that is not a message", () => {
@@ -57,34 +25,24 @@ describe("parseEditorEvent", () => {
     expect(parseEditorEvent("{")).toBeNull();
   });
 
-  it("ignores messages it does not know", () => {
+  it("ignores messages a reader has no use for", () => {
+    expect(parseEditorEvent({ event: "autosave", xml: "<mxfile />" })).toBeNull();
+    expect(parseEditorEvent({ event: "save", xml: "<mxfile />" })).toBeNull();
     expect(parseEditorEvent({ event: "configure" })).toBeNull();
-    expect(parseEditorEvent({ event: "exit" })).toBeNull();
-    expect(parseEditorEvent("init")).toBeNull();
     expect(parseEditorEvent(null)).toBeNull();
     expect(parseEditorEvent(undefined)).toBeNull();
   });
 });
 
 describe("editorFrameSource", () => {
-  it("asks for the json embed protocol in the device language", () => {
-    const source = editorFrameSource("el");
-    const parameters = new URL(source, "http://localhost").searchParams;
+  it("asks for a chromeless frame, which is the editor's read-only mode", () => {
+    const parameters = new URL(editorFrameSource("el"), "http://localhost").searchParams;
 
-    expect(source.startsWith("/editor/index.html?")).toBe(true);
+    expect(parameters.get("chrome")).toBe("0");
     expect(parameters.get("embed")).toBe("1");
     expect(parameters.get("proto")).toBe("json");
     expect(parameters.get("lang")).toBe("el");
     expect(parameters.get("spin")).toBe("0");
-  });
-
-  it("removes the editor's own controls and status text", () => {
-    const parameters = new URL(editorFrameSource("en"), "http://localhost").searchParams;
-
-    expect(parameters.get("noSaveBtn")).toBe("1");
-    expect(parameters.get("noExitBtn")).toBe("1");
-    expect(parameters.get("saveAndExit")).toBe("0");
-    expect(parameters.get("modified")).toBe("0");
   });
 
   it("draws on a fixed dark surface instead of a moving page", () => {
@@ -110,32 +68,11 @@ describe("readLanguage", () => {
 });
 
 describe("actions", () => {
-  it("hands a document back to the editor", () => {
-    expect(loadAction(INITIAL_DIAGRAM)).toEqual({
-      action: "load",
-      xml: INITIAL_DIAGRAM,
-      autosave: 1,
-    });
+  it("hands a document to the frame", () => {
+    expect(loadAction("<mxfile />")).toEqual({ action: "load", xml: "<mxfile />" });
   });
 
-  it("asks the editor to hand over its document", () => {
-    expect(exportAction()).toEqual({ action: "export", format: "xml" });
-  });
-
-  it("turns autosave on so changes reach the shell without a save", () => {
-    expect(loadAction(INITIAL_DIAGRAM).autosave).toBe(1);
-  });
-});
-
-describe("encodeAction", () => {
   it("sends json strings, which is what the editor parses", () => {
-    expect(encodeAction(exportAction())).toBe('{"action":"export","format":"xml"}');
-  });
-});
-
-describe("byteLength", () => {
-  it("counts bytes rather than characters", () => {
-    expect(byteLength("abc")).toBe(3);
-    expect(byteLength("αβγ")).toBe(6);
+    expect(encodeAction(loadAction("<mxfile />"))).toBe('{"action":"load","xml":"<mxfile />"}');
   });
 });

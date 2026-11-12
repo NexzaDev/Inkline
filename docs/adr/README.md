@@ -13,6 +13,7 @@ record that names the old one.
 | [0005](0005-offline-network-posture.md) | No network capability, remote defaults switched off at the source | accepted |
 | [0006](0006-verification-environment.md) | What is verified in the sandbox and what is verified only in CI | accepted |
 | [0007](0007-android-project-scaffold.md) | The generated Android project is committed and normalised, `INTERNET` only in debug | accepted |
+| [0008](0008-reader-only.md) | Inkline renders `.graph` documents and does not edit them; authoring is code | accepted |
 
 Template for a new record:
 

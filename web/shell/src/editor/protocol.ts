@@ -1,11 +1,5 @@
 const EDITOR_PAGE = "/editor/index.html";
 
-export const INITIAL_DIAGRAM =
-  '<mxfile><diagram id="inkline-initial" name="Page-1">' +
-  '<mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" ' +
-  'arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">' +
-  '<root><mxCell id="0" /><mxCell id="1" parent="0" /></root></mxGraphModel></diagram></mxfile>';
-
 export type EditorLanguage = "en" | "el";
 
 export interface EditorInit {
@@ -16,30 +10,14 @@ export interface EditorLoaded {
   readonly event: "load";
 }
 
-export interface EditorSaved {
-  readonly event: "save" | "autosave";
-  readonly xml: string;
-}
-
-export interface EditorExported {
-  readonly event: "export";
-  readonly xml: string;
-}
-
-export type EditorEvent = EditorInit | EditorLoaded | EditorSaved | EditorExported;
+export type EditorEvent = EditorInit | EditorLoaded;
 
 export interface LoadAction {
   readonly action: "load";
   readonly xml: string;
-  readonly autosave: 1;
 }
 
-export interface ExportAction {
-  readonly action: "export";
-  readonly format: "xml";
-}
-
-export type EditorAction = LoadAction | ExportAction;
+export type EditorAction = LoadAction;
 
 export function parseEditorEvent(payload: unknown): EditorEvent | null {
   const message = readMessage(payload);
@@ -48,19 +26,12 @@ export function parseEditorEvent(payload: unknown): EditorEvent | null {
     return null;
   }
 
-  const name = message.event;
-
-  if (name === "init") {
+  if (message.event === "init") {
     return { event: "init" };
   }
 
-  if (name === "load") {
+  if (message.event === "load") {
     return { event: "load" };
-  }
-
-  if (name === "save" || name === "autosave" || name === "export") {
-    const xml = message.xml;
-    return typeof xml === "string" ? { event: name, xml } : null;
   }
 
   return null;
@@ -88,11 +59,7 @@ export function encodeAction(action: EditorAction): string {
 }
 
 export function loadAction(xml: string): LoadAction {
-  return { action: "load", xml, autosave: 1 };
-}
-
-export function exportAction(): ExportAction {
-  return { action: "export", format: "xml" };
+  return { action: "load", xml };
 }
 
 export function readLanguage(tag: string): EditorLanguage {
@@ -104,11 +71,7 @@ export function editorFrameSource(language: EditorLanguage): string {
     embed: "1",
     proto: "json",
     spin: "0",
-    libraries: "1",
-    noSaveBtn: "1",
-    saveAndExit: "0",
-    noExitBtn: "1",
-    modified: "0",
+    chrome: "0",
     dark: "1",
     pv: "0",
     grid: "0",
@@ -116,8 +79,4 @@ export function editorFrameSource(language: EditorLanguage): string {
   });
 
   return `${EDITOR_PAGE}?${parameters.toString()}`;
-}
-
-export function byteLength(xml: string): number {
-  return new TextEncoder().encode(xml).length;
 }

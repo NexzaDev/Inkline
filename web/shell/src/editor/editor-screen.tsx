@@ -1,60 +1,79 @@
+import { useRef, useState } from "preact/hooks";
+
+import { readGraphDocument, type GraphDocument } from "./document";
 import type { EditorLanguage } from "./protocol";
 import { useEditorFrame, type EditorStatus } from "./use-editor-frame";
 
 export function EditorScreen({ language }: { readonly language: EditorLanguage }) {
-  const { frameRef, source, attempt, status, canSave, canReload, canRetry, save, reload, retry } =
-    useEditorFrame(language);
+  const [document, setDocument] = useState<GraphDocument | null>(null);
+  const [rejection, setRejection] = useState<string | null>(null);
+  const pickerRef = useRef<HTMLInputElement | null>(null);
+  const { frameRef, source, attempt, status, canRetry, retry } = useEditorFrame(
+    language,
+    document === null ? null : document.xml,
+  );
+
+  async function open(file: File | undefined) {
+    if (file === undefined) return;
+
+    try {
+      setDocument(await readGraphDocument(file));
+      setRejection(null);
+    } catch (error) {
+      setRejection(error instanceof Error ? error.message : "the file could not be read");
+    }
+  }
 
   return (
     <main class="editor">
-      <iframe
-        key={attempt}
-        ref={frameRef}
-        class="editor-frame"
-        data-ready={status.kind !== "connecting"}
-        src={source}
-        title="Inkline editor"
-      />
+      {document === null ? null : (
+        <iframe
+          key={attempt}
+          ref={frameRef}
+          class="editor-frame"
+          data-ready={status.kind === "ready"}
+          src={source}
+          title={document.name}
+        />
+      )}
       <footer class="editor-status">
         <p class="editor-state" aria-live="polite">
-          {statusText(status)}
+          {rejection ?? statusText(status, document)}
         </p>
         <div class="editor-controls">
           {canRetry ? (
             <button type="button" class="editor-action" onClick={retry}>
               Try again
             </button>
-          ) : (
-            <>
-              <button type="button" class="editor-action" disabled={!canReload} onClick={reload}>
-                Reload
-              </button>
-              <button type="button" class="editor-action" disabled={!canSave} onClick={save}>
-                Save
-              </button>
-            </>
-          )}
+          ) : null}
+          <button type="button" class="editor-action" onClick={() => pickerRef.current?.click()}>
+            Open
+          </button>
         </div>
       </footer>
+      <input
+        ref={pickerRef}
+        class="editor-picker"
+        type="file"
+        accept=".graph,.xml,application/xml,text/xml"
+        onChange={(event) => {
+          void open(event.currentTarget.files?.[0]);
+          event.currentTarget.value = "";
+        }}
+      />
     </main>
   );
 }
 
-function statusText(status: EditorStatus): string {
+function statusText(status: EditorStatus, document: GraphDocument | null): string {
   switch (status.kind) {
+    case "empty":
+      return "No document open";
     case "connecting":
-      return "Starting the editor";
+      return "Opening the document";
     case "ready":
-      return "Ready";
-    case "modified":
-      return "Unsaved changes";
-    case "saved":
-      return `Saved · ${formatBytes(status.bytes)}`;
-    case "unavailable":
-      return "The editor did not start";
+      return document === null ? "Ready" : document.name;
+    case "failed":
+      return "The document did not render";
   }
-}
-
-function formatBytes(bytes: number): string {
-  return bytes < 1024 ? `${bytes.toString()} B` : `${(bytes / 1024).toFixed(1)} KB`;
 }

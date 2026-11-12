@@ -77,6 +77,11 @@ editor smoke test in CI enforce.
 
 ## 4. The editor integration contract
 
+ADR 0008 changed the product: Inkline renders documents and does not edit them.
+The frame below is therefore the reader configuration. Everything in 4.2 to 4.6
+that describes editing, saving and autosave is superseded by that record and is
+kept because it documents what the vendored editor does.
+
 ### 4.1 Frame URL
 
 ```
@@ -84,25 +89,25 @@ web/editor/vendor/drawio/index.html
   ?embed=1
   &proto=json
   &spin=0
-  &libraries=1
-  &noSaveBtn=1
-  &saveAndExit=0
-  &noExitBtn=1
-  &modified=0
+  &chrome=0
   &dark=1
   &pv=0
   &grid=0
   &lang=en|el
 ```
 
+- `chrome=0` is the reader. The editor derives its own editability from the same
+  flag (`this.editable = null != e ? e : !a` in `js/diagramly/EditorUi.js`), so a
+  chromeless frame cannot be edited: no toolbar, no menus, no format panel, no
+  text editing, no autosave. Panning, pinch zoom, links and tooltips remain.
+
 - `embed=1&proto=json` selects the JSON message protocol
   (`js/diagramly/EditorUi.js:31566`, `installMessageHandler`).
 - `spin=0` suppresses the editor's own spinner. Inkline draws its own loading
   screen and only reveals the frame on the `load` event.
-- `noSaveBtn=1&saveAndExit=0&noExitBtn=1` removes the editor's own action
-  buttons so that one set of controls (the shell's) exists. The document is
-  taken through an xml export instead of the editor's save action; see 4.4.
-- `modified=0` stops the editor from writing status text into its own bar.
+- `noSaveBtn=1&saveAndExit=0&noExitBtn=1` and `modified=0` belonged to the edit
+  build, where the shell owned the controls. A chromeless frame has no buttons
+  and no status bar, so they are no longer passed.
 - `dark=1` selects the editor's own dark palette, so the chrome matches the
   shell instead of flashing a light application inside a black one.
 - `pv=0` removes the page sheet and `grid=0` removes the grid. Both are drawn

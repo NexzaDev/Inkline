@@ -106,6 +106,10 @@ body {
   }
 }
 
+.editor-picker {
+  display: none;
+}
+
 .editor-status {
   display: flex;
   align-items: center;

@@ -2,11 +2,8 @@ import type { RefObject } from "preact";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 
 import {
-  byteLength,
   editorFrameSource,
   encodeAction,
-  exportAction,
-  INITIAL_DIAGRAM,
   loadAction,
   parseEditorEvent,
   type EditorAction,
@@ -16,67 +13,61 @@ import {
 const START_TIMEOUT_MS = 20000;
 
 export type EditorStatus =
+  | { readonly kind: "empty" }
   | { readonly kind: "connecting" }
   | { readonly kind: "ready" }
-  | { readonly kind: "modified" }
-  | { readonly kind: "saved"; readonly bytes: number }
-  | { readonly kind: "unavailable" };
+  | { readonly kind: "failed" };
 
 export interface EditorController {
   readonly frameRef: RefObject<HTMLIFrameElement | null>;
   readonly source: string;
   readonly attempt: number;
   readonly status: EditorStatus;
-  readonly canSave: boolean;
-  readonly canReload: boolean;
   readonly canRetry: boolean;
-  readonly save: () => void;
-  readonly reload: () => void;
   readonly retry: () => void;
 }
 
-export function useEditorFrame(language: EditorLanguage): EditorController {
+export function useEditorFrame(language: EditorLanguage, xml: string | null): EditorController {
   const frameRef = useRef<HTMLIFrameElement | null>(null);
-  const [status, setStatus] = useState<EditorStatus>({ kind: "connecting" });
-  const [saved, setSaved] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [status, setStatus] = useState<EditorStatus>(
+    xml === null ? { kind: "empty" } : { kind: "connecting" },
+  );
 
   const send = useCallback((action: EditorAction) => {
     frameRef.current?.contentWindow?.postMessage(encodeAction(action), window.location.origin);
   }, []);
 
   useEffect(() => {
+    if (xml === null) {
+      setStatus({ kind: "empty" });
+      return;
+    }
+
+    const documentXml = xml;
+
+    setStatus({ kind: "connecting" });
+
     const timeout = window.setTimeout(() => {
-      setStatus((current) => (current.kind === "connecting" ? { kind: "unavailable" } : current));
+      setStatus((current) => (current.kind === "connecting" ? { kind: "failed" } : current));
     }, START_TIMEOUT_MS);
 
     function handleMessage(rawEvent: MessageEvent<unknown>) {
       const frame = frameRef.current;
 
       if (frame === null) return;
-      if (rawEvent.origin !== window.location.origin) return;
       if (rawEvent.source !== frame.contentWindow) return;
 
       const event = parseEditorEvent(rawEvent.data);
 
       if (event === null) return;
 
-      switch (event.event) {
-        case "init":
-          send(loadAction(INITIAL_DIAGRAM));
-          return;
-        case "load":
-          setStatus({ kind: "ready" });
-          return;
-        case "autosave":
-          setStatus({ kind: "modified" });
-          return;
-        case "save":
-        case "export":
-          setSaved(event.xml);
-          setStatus({ kind: "saved", bytes: byteLength(event.xml) });
-          return;
+      if (event.event === "init") {
+        send(loadAction(documentXml));
+        return;
       }
+
+      setStatus({ kind: "ready" });
     }
 
     window.addEventListener("message", handleMessage);
@@ -85,33 +76,19 @@ export function useEditorFrame(language: EditorLanguage): EditorController {
       window.clearTimeout(timeout);
       window.removeEventListener("message", handleMessage);
     };
-  }, [send, attempt]);
-
-  const save = useCallback(() => {
-    send(exportAction());
-  }, [send]);
+  }, [send, xml, attempt]);
 
   const retry = useCallback(() => {
     setStatus({ kind: "connecting" });
     setAttempt((current) => current + 1);
   }, []);
 
-  const reload = useCallback(() => {
-    if (saved === null) return;
-    setStatus({ kind: "ready" });
-    send(loadAction(saved));
-  }, [saved, send]);
-
   return {
     frameRef,
     source: editorFrameSource(language),
     attempt,
     status,
-    canSave: status.kind === "ready" || status.kind === "modified",
-    canReload: saved !== null && status.kind !== "unavailable",
-    canRetry: status.kind === "unavailable",
-    save,
-    reload,
+    canRetry: status.kind === "failed" && xml !== null,
     retry,
   };
 }
