@@ -60,6 +60,25 @@ committed, and from that point the workflows switch to `--locked`. Until then,
 CI resolves dependencies fresh, which is why `cargo generate-lockfile` is an
 explicit step rather than an accident.
 
+## Reading a failure
+
+Step output is not always reachable from a phone, so the jobs that can produce
+long, useful output route it through two helpers in `scripts/ci/`. `capture.sh`
+runs a command, passes its output through, and on failure re-emits the last
+sixty lines as an error annotation, which GitHub shows next to the failing check
+without opening the log. `note.sh` publishes text as a notice annotation, which
+is how the SDK inventory is reported.
+
+Formatting is checked by running `cargo fmt --all` and then diffing the working
+tree, rather than by `--check`. The diff of a failed `--check` is otherwise only
+in the log; this way it becomes an annotation that names the exact lines.
+
+The Android SDK packages are installed explicitly, using the versioned names the
+SDK repository actually publishes: `platforms;android-37.0`, not
+`platforms;android-37`, and `build-tools;37.0.0`. The inventory step prints what
+the runner already has and which build tools exist, so a rename in the SDK
+repository is visible in the check annotations of the run that breaks.
+
 ## Running the same checks locally
 
 ```

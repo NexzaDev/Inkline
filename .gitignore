@@ -8,3 +8,5 @@ local.properties
 .venv
 __pycache__
 *.pyc
+src-tauri/gen/schemas
+src-tauri/icons/android

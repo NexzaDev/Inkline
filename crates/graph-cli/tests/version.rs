@@ -33,10 +33,7 @@ fn version_text_names_the_tool() {
 
 #[test]
 fn unknown_subcommand_fails() {
-    let output = graphctl()
-        .arg("teleport")
-        .output()
-        .expect("graphctl runs");
+    let output = graphctl().arg("teleport").output().expect("graphctl runs");
 
     assert!(!output.status.success());
 }

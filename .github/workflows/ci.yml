@@ -155,11 +155,14 @@ jobs:
 
       - name: Inspect the Android SDK
         run: |
-          scripts/ci/note.sh "installed packages" "$(sdkmanager --list_installed 2>&1 | head -n 40)"
-          scripts/ci/note.sh "available platforms" "$(sdkmanager --list 2>&1 | grep -E 'platforms;android-[0-9]+|build-tools;3[0-9]' | tail -n 25)"
+          scripts/ci/note.sh "installed packages" "$(sdkmanager --list_installed 2>&1 | grep -E 'platforms;|build-tools;|ndk;' | head -n 30)"
+          scripts/ci/note.sh "available build tools" "$(sdkmanager --list 2>&1 | grep -E 'build-tools;3[6-9]' | tail -n 12)"
 
-      - name: Install the SDK platform and build tools
-        run: scripts/ci/capture.sh "android sdk" sdkmanager --install "platforms;android-37" "build-tools;37.0.0" "platform-tools"
+      - name: Install the SDK platform
+        run: scripts/ci/capture.sh "android platform" sdkmanager --install "platforms;android-37.0" "platform-tools"
+
+      - name: Install the build tools
+        run: scripts/ci/capture.sh "android build tools" sdkmanager --install "build-tools;37.0.0"
 
       - name: Install the NDK
         id: ndk
