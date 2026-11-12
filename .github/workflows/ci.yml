@@ -37,13 +37,19 @@ jobs:
           key: rust-core
 
       - name: Check formatting
-        run: cargo fmt --all --check
+        run: |
+          cargo fmt --all
+          if ! git diff --quiet -- '*.rs'; then
+            scripts/ci/note.sh "cargo fmt" "$(git diff -- '*.rs' | head -n 200)"
+            echo "::error title=cargo fmt::the checked-in Rust sources are not formatted"
+            exit 1
+          fi
 
       - name: Lint the core crates
-        run: cargo clippy -p graph-core -p graph-cli --all-targets -- -D warnings
+        run: scripts/ci/capture.sh "clippy" cargo clippy -p graph-core -p graph-cli --all-targets -- -D warnings
 
       - name: Test the core crates
-        run: cargo test -p graph-core -p graph-cli
+        run: scripts/ci/capture.sh "cargo test" cargo test -p graph-core -p graph-cli
 
       - name: Resolve the dependency graph
         run: cargo generate-lockfile
@@ -147,10 +153,13 @@ jobs:
       - name: Install the Android SDK
         uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd
 
-      - name: Install the SDK platform and build tools
+      - name: Inspect the Android SDK
         run: |
-          sdkmanager --install "platforms;android-37" "build-tools;37.0.0" "platform-tools"
-          sdkmanager --list_installed
+          scripts/ci/note.sh "installed packages" "$(sdkmanager --list_installed 2>&1 | head -n 40)"
+          scripts/ci/note.sh "available platforms" "$(sdkmanager --list 2>&1 | grep -E 'platforms;android-[0-9]+|build-tools;3[0-9]' | tail -n 25)"
+
+      - name: Install the SDK platform and build tools
+        run: scripts/ci/capture.sh "android sdk" sdkmanager --install "platforms;android-37" "build-tools;37.0.0" "platform-tools"
 
       - name: Install the NDK
         id: ndk
