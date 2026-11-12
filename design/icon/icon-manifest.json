@@ -1,0 +1,6 @@
+{
+  "default": "inkline-mark.svg",
+  "bg_color": "#0b0b0c",
+  "android_fg": "inkline-foreground.svg",
+  "android_fg_scale": 66
+}

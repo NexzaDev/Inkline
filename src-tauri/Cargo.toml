@@ -1,0 +1,25 @@
+[package]
+name = "inkline"
+description = "Inkline, a graph and diagram editor for Android"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lib]
+name = "inkline_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+graph-core.workspace = true
+serde.workspace = true
+tauri.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

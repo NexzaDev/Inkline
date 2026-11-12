@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Inkline">
+  <g transform="translate(512 512) scale(0.72) translate(-512 -512)">
+    <path d="M300 724 724 300" stroke="#ededed" stroke-width="56" stroke-linecap="round" fill="none" />
+    <circle cx="300" cy="724" r="76" fill="#ededed" />
+    <circle cx="724" cy="300" r="76" fill="#ededed" />
+  </g>
+</svg>

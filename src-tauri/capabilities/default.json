@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "Permissions granted to the Inkline shell window",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
