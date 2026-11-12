@@ -29,6 +29,11 @@ burying which of licences, advisories, bans or sources objected. They cover the
 whole workspace, including the Tauri dependency tree, because none of them needs
 compilation.
 
+The bans check rejects wildcard requirements. `cargo-deny` treats a path
+dependency without a version as a wildcard, so the workspace dependency on
+`graph-core` names its version as well as its path — which is also what Cargo
+requires of a path dependency that is ever published.
+
 One advisory is ignored. `proc-macro-error` reaches the graph only through the
 GTK crates that `tao` pulls in for a desktop Linux build, which is not a target
 of this project, and the advisory publishes no patched release. The ignore is a

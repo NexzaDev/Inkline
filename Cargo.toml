@@ -12,7 +12,7 @@ repository = "https://github.com/NexzaDev/Inkline"
 homepage = "https://github.com/NexzaDev/Inkline"
 
 [workspace.dependencies]
-graph-core = { path = "crates/graph-core" }
+graph-core = { path = "crates/graph-core", version = "0.1.0" }
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
