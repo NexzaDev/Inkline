@@ -12,6 +12,7 @@ record that names the old one.
 | [0004](0004-preview-mode.md) | Preview mode is a locked-down editor frame, not the viewer bundle | accepted |
 | [0005](0005-offline-network-posture.md) | No network capability, remote defaults switched off at the source | accepted |
 | [0006](0006-verification-environment.md) | What is verified in the sandbox and what is verified only in CI | accepted |
+| [0007](0007-android-project-scaffold.md) | The generated Android project is committed and normalised, `INTERNET` only in debug | accepted |
 
 Template for a new record:
 

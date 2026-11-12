@@ -1,0 +1,177 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_VERSION: "1.90.0"
+  NODE_VERSION: "22"
+
+jobs:
+  rust:
+    name: Rust core
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Install the pinned toolchain
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal --component rustfmt --component clippy
+          rustup default "$RUST_VERSION"
+          rustc --version
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+        with:
+          key: rust-core
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Lint the core crates
+        run: cargo clippy -p graph-core -p graph-cli --all-targets -- -D warnings
+
+      - name: Test the core crates
+        run: cargo test -p graph-core -p graph-cli
+
+      - name: Resolve the dependency graph
+        run: cargo generate-lockfile
+
+      - name: Check licences, advisories and duplicate versions
+        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25
+        with:
+          command: check
+
+      - name: Publish the resolved lockfile
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: cargo-lock
+          path: Cargo.lock
+          if-no-files-found: warn
+          retention-days: 7
+
+  web:
+    name: Shell
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web/shell
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Install Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/shell/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Report bundle size
+        run: |
+          find dist -type f -printf "%s\t%p\n" | sort -rn
+          echo "total gzip bytes: $(find dist -type f -name '*.js' -o -name '*.css' -o -name '*.html' | xargs cat | gzip -9 | wc -c)"
+
+  android:
+    name: Android debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Install Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            web/shell/package-lock.json
+
+      - name: Install the build tooling
+        run: |
+          npm ci
+          npm ci --prefix web/shell
+
+      - name: Install the pinned toolchain and Android targets
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal \
+            --target aarch64-linux-android \
+            --target armv7-linux-androideabi \
+            --target i686-linux-android \
+            --target x86_64-linux-android
+          rustup default "$RUST_VERSION"
+          rustc --version
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+        with:
+          key: android
+
+      - name: Install Java
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Install the Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd
+
+      - name: Install the SDK platform and build tools
+        run: |
+          sdkmanager --install "platforms;android-37" "build-tools;37.0.0" "platform-tools"
+          sdkmanager --list_installed
+
+      - name: Install the NDK
+        id: ndk
+        uses: nttld/setup-ndk@ed92fe6cadad69be94a966a7ee3271275e62f779
+        with:
+          ndk-version: r29
+          local-cache: true
+
+      - name: Build the APK
+        env:
+          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: npx tauri android build --debug --apk --target aarch64 --ci
+
+      - name: Report APK size
+        run: |
+          find src-tauri/gen/android/app/build/outputs -name "*.apk" -printf "%s\t%p\n"
+
+      - name: Publish the APK
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: inkline-debug-apk
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+          retention-days: 14
