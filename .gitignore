@@ -1,0 +1,10 @@
+/target
+node_modules
+dist
+.DS_Store
+.idea
+*.iml
+local.properties
+.venv
+__pycache__
+*.pyc
