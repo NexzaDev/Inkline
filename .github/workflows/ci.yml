@@ -121,8 +121,8 @@ jobs:
 
       - name: Report bundle size
         run: |
-          find dist -type f -printf "%s\t%p\n" | sort -rn
-          echo "total gzip bytes: $(find dist -type f -name '*.js' -o -name '*.css' -o -name '*.html' | xargs cat | gzip -9 | wc -c)"
+          du -sh dist dist/editor
+          find dist/assets dist/index.html -type f -printf "%s\t%p\n" | sort -rn"
 
   android:
     name: Android debug APK

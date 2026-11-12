@@ -1,6 +1,8 @@
 import { useEffect, useState } from "preact/hooks";
 
 import { formatVersionLine, readAppInfo, type AppInfo } from "./api/app-info";
+import { EditorScreen } from "./editor/editor-screen";
+import { readLanguage } from "./editor/protocol";
 
 type StartupState =
   | { status: "starting" }
@@ -28,6 +30,10 @@ export function App() {
       cancelled = true;
     };
   }, []);
+
+  if (state.status === "ready") {
+    return <EditorScreen language={readLanguage(navigator.language)} />;
+  }
 
   return (
     <main class="shell">
@@ -60,7 +66,7 @@ function headline(state: StartupState): string {
     case "starting":
       return "Preparing the workspace";
     case "ready":
-      return "No documents yet";
+      return "Opening the editor";
     case "failed":
       return "The app could not start";
   }

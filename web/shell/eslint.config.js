@@ -4,7 +4,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "node_modules", "coverage"] },
+  { ignores: ["dist", "node_modules", "coverage", "public"] },
   js.configs.recommended,
   tseslint.configs.strictTypeChecked,
   tseslint.configs.stylisticTypeChecked,
@@ -23,7 +23,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["*.config.ts", "*.config.js"],
+    files: ["*.config.ts", "*.config.js", "scripts/**/*.mjs"],
     languageOptions: { parserOptions: { projectService: false } },
     ...tseslint.configs.disableTypeChecked,
   },
