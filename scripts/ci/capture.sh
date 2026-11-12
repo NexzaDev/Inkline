@@ -6,13 +6,18 @@ shift
 
 log="$(mktemp)"
 
-if "$@" 2>&1 | tee "$log"; then
+"$@" >"$log" 2>&1
+status=$?
+
+cat "$log"
+
+if [ "$status" -eq 0 ]; then
   rm -f "$log"
   exit 0
 fi
 
-status="${PIPESTATUS[0]}"
-payload="$(tail -n 150 "$log" | sed -e 's/\x1b\[[0-9;]*[a-zA-Z]//g' -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'NF {printf "%s%%0A", $0}')"
+selection="$( { grep -E '^(error|Error|[a-z-]+\[[a-z-]+\]:)' "$log" | head -n 60; tail -n 60 "$log"; } | awk '!seen[$0]++' )"
+payload="$(printf '%s\n' "$selection" | sed -e 's/\x1b\[[0-9;]*[a-zA-Z]//g' -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'NF {printf "%s%%0A", $0}')"
 
 echo "::error title=${title}::${payload:0:20000}"
 

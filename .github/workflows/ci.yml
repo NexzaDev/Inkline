@@ -54,12 +54,16 @@ jobs:
       - name: Resolve the dependency graph
         run: cargo generate-lockfile
 
-      - name: Check licences, advisories and duplicate versions
-        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39
         with:
-          command: check
+          tool: cargo-deny@0.20.2
+
+      - name: Check licences, advisories and duplicate versions
+        run: scripts/ci/capture.sh "cargo deny" cargo-deny --all-features check
 
       - name: Publish the resolved lockfile
+        if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: cargo-lock
@@ -170,6 +174,13 @@ jobs:
         with:
           ndk-version: r29
           local-cache: true
+
+      - name: Verify the NDK toolchain
+        env:
+          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: |
+          scripts/ci/note.sh "ndk inventory" "$(ls "$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin" | head -n 30)"
+          scripts/ci/capture.sh "ndk" "$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android26-clang" --version
 
       - name: Build the APK
         env:

@@ -20,8 +20,12 @@ fails the build — it just fails in the job that also produces the APK. If a
 desktop build becomes a target, this split changes and the CI gains the system
 dependencies.
 
-`cargo deny check` runs against the whole workspace, including the Tauri
-dependency tree, because licence and advisory checks do not need compilation.
+`cargo-deny` 0.20.2 is installed as a prebuilt binary and run as a plain
+command, rather than through the upstream action. The action is a container
+whose findings only ever appear in the step log; running the binary here means
+the findings reach the annotations like every other failure. The check covers
+the whole workspace, including the Tauri dependency tree, because licence and
+advisory checks do not need compilation.
 
 ## Pinned actions
 
@@ -38,7 +42,7 @@ workflow files carry no comments.
 | `Swatinem/rust-cache` | v2.9.3 | `d1527c8f67ef9af357290475d4af4b0fab8f12e0` |
 | `android-actions/setup-android` | v4.0.4 | `be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd` |
 | `nttld/setup-ndk` | v1.6.0 | `ed92fe6cadad69be94a966a7ee3271275e62f779` |
-| `EmbarkStudios/cargo-deny-action` | v2.1.1 | `3c6349835b2b7b196a839186cb8b78e02f7b5f25` |
+| `taiki-e/install-action` | v2.90.3 | `cfdb7ed4ccc7c7dce37759eae89dc5674b469b39` |
 
 The Rust toolchain is installed with `rustup` from the version in
 `rust-toolchain.toml` and the same version again in the workflow, so a runner
