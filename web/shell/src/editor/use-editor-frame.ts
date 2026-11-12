@@ -4,10 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import {
   byteLength,
   editorFrameSource,
+  encodeAction,
+  exportAction,
   INITIAL_DIAGRAM,
   loadAction,
   parseEditorEvent,
-  saveAction,
   type EditorAction,
   type EditorLanguage,
 } from "./protocol";
@@ -24,20 +25,24 @@ export type EditorStatus =
 export interface EditorController {
   readonly frameRef: RefObject<HTMLIFrameElement | null>;
   readonly source: string;
+  readonly attempt: number;
   readonly status: EditorStatus;
   readonly canSave: boolean;
   readonly canReload: boolean;
+  readonly canRetry: boolean;
   readonly save: () => void;
   readonly reload: () => void;
+  readonly retry: () => void;
 }
 
 export function useEditorFrame(language: EditorLanguage): EditorController {
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const [status, setStatus] = useState<EditorStatus>({ kind: "connecting" });
   const [saved, setSaved] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   const send = useCallback((action: EditorAction) => {
-    frameRef.current?.contentWindow?.postMessage(action, window.location.origin);
+    frameRef.current?.contentWindow?.postMessage(encodeAction(action), window.location.origin);
   }, []);
 
   useEffect(() => {
@@ -67,6 +72,7 @@ export function useEditorFrame(language: EditorLanguage): EditorController {
           setStatus({ kind: "modified" });
           return;
         case "save":
+        case "export":
           setSaved(event.xml);
           setStatus({ kind: "saved", bytes: byteLength(event.xml) });
           return;
@@ -79,11 +85,16 @@ export function useEditorFrame(language: EditorLanguage): EditorController {
       window.clearTimeout(timeout);
       window.removeEventListener("message", handleMessage);
     };
-  }, [send]);
+  }, [send, attempt]);
 
   const save = useCallback(() => {
-    send(saveAction());
+    send(exportAction());
   }, [send]);
+
+  const retry = useCallback(() => {
+    setStatus({ kind: "connecting" });
+    setAttempt((current) => current + 1);
+  }, []);
 
   const reload = useCallback(() => {
     if (saved === null) return;
@@ -94,10 +105,13 @@ export function useEditorFrame(language: EditorLanguage): EditorController {
   return {
     frameRef,
     source: editorFrameSource(language),
+    attempt,
     status,
     canSave: status.kind === "ready" || status.kind === "modified",
     canReload: saved !== null && status.kind !== "unavailable",
+    canRetry: status.kind === "unavailable",
     save,
     reload,
+    retry,
   };
 }

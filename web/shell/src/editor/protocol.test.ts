@@ -3,11 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   byteLength,
   editorFrameSource,
+  encodeAction,
   INITIAL_DIAGRAM,
   loadAction,
   parseEditorEvent,
   readLanguage,
-  saveAction,
+  exportAction,
 } from "./protocol";
 
 describe("parseEditorEvent", () => {
@@ -23,6 +24,13 @@ describe("parseEditorEvent", () => {
     });
   });
 
+  it("reads the document out of an export", () => {
+    expect(parseEditorEvent('{"event":"export","format":"xml","xml":"<mxfile />"}')).toEqual({
+      event: "export",
+      xml: "<mxfile />",
+    });
+  });
+
   it("treats an autosave as a save", () => {
     expect(parseEditorEvent({ event: "autosave", xml: "<mxfile />" })).toEqual({
       event: "autosave",
@@ -33,6 +41,20 @@ describe("parseEditorEvent", () => {
   it("rejects a save without a document", () => {
     expect(parseEditorEvent({ event: "save" })).toBeNull();
     expect(parseEditorEvent({ event: "save", xml: 42 })).toBeNull();
+  });
+
+  it("reads the json strings the editor actually sends", () => {
+    expect(parseEditorEvent('{"event":"init"}')).toEqual({ event: "init" });
+    expect(parseEditorEvent('{"event":"save","xml":"<mxfile />"}')).toEqual({
+      event: "save",
+      xml: "<mxfile />",
+    });
+  });
+
+  it("survives a string that is not a message", () => {
+    expect(parseEditorEvent("ready")).toBeNull();
+    expect(parseEditorEvent("")).toBeNull();
+    expect(parseEditorEvent("{")).toBeNull();
   });
 
   it("ignores messages it does not know", () => {
@@ -84,11 +106,22 @@ describe("actions", () => {
     expect(loadAction(INITIAL_DIAGRAM)).toEqual({
       action: "load",
       xml: INITIAL_DIAGRAM,
+      autosave: 1,
     });
   });
 
-  it("asks the editor to run its own save action", () => {
-    expect(saveAction()).toEqual({ action: "invokeAction", actionName: "save" });
+  it("asks the editor to hand over its document", () => {
+    expect(exportAction()).toEqual({ action: "export", format: "xml" });
+  });
+
+  it("turns autosave on so changes reach the shell without a save", () => {
+    expect(loadAction(INITIAL_DIAGRAM).autosave).toBe(1);
+  });
+});
+
+describe("encodeAction", () => {
+  it("sends json strings, which is what the editor parses", () => {
+    expect(encodeAction(exportAction())).toBe('{"action":"export","format":"xml"}');
   });
 });
 

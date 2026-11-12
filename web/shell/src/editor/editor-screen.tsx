@@ -2,11 +2,13 @@ import type { EditorLanguage } from "./protocol";
 import { useEditorFrame, type EditorStatus } from "./use-editor-frame";
 
 export function EditorScreen({ language }: { readonly language: EditorLanguage }) {
-  const { frameRef, source, status, canSave, canReload, save, reload } = useEditorFrame(language);
+  const { frameRef, source, attempt, status, canSave, canReload, canRetry, save, reload, retry } =
+    useEditorFrame(language);
 
   return (
     <main class="editor">
       <iframe
+        key={attempt}
         ref={frameRef}
         class="editor-frame"
         data-ready={status.kind !== "connecting"}
@@ -18,12 +20,20 @@ export function EditorScreen({ language }: { readonly language: EditorLanguage }
           {statusText(status)}
         </p>
         <div class="editor-controls">
-          <button type="button" class="editor-action" disabled={!canReload} onClick={reload}>
-            Reload
-          </button>
-          <button type="button" class="editor-action" disabled={!canSave} onClick={save}>
-            Save
-          </button>
+          {canRetry ? (
+            <button type="button" class="editor-action" onClick={retry}>
+              Try again
+            </button>
+          ) : (
+            <>
+              <button type="button" class="editor-action" disabled={!canReload} onClick={reload}>
+                Reload
+              </button>
+              <button type="button" class="editor-action" disabled={!canSave} onClick={save}>
+                Save
+              </button>
+            </>
+          )}
         </div>
       </footer>
     </main>

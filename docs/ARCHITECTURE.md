@@ -187,11 +187,23 @@ The state envelope carried by most of them is built by
 `containerSize`. `containerSize` is what the shell uses to decide whether the
 editor's panels fit; `modelBounds` is what it uses for thumbnails.
 
-The embedded Save button is gone (`noSaveBtn=1`), but the save action itself is
-overridden in embed mode to post `{event:'save', xml, exit?}`
-(`js/diagramly/Menus.js:3327`). The shell triggers it with
-`invokeAction: 'save'`, so Ctrl+S inside the editor and the shell's own Save
-control take exactly the same path.
+Every message travels as a JSON string, not as an object: the editor posts
+`JSON.stringify(...)` and parses `event.data` back with `JSON.parse`
+(`js/diagramly/EditorUi.js:31566`, `installMessageHandler`), and the shell has to
+do the same in both directions. A bridge that posts objects is ignored without
+an error, and the frame then looks loaded but never answers.
+
+The embedded Save button is gone (`noSaveBtn=1`) and the editor's own save
+action is not used: in this build it writes to the editor's own storage through
+`saveRequest`, which is not where Inkline documents live. Two paths replace it:
+
+- `load` carries `autosave: 1`, which makes the editor post
+  `{event:'autosave', xml}` on every change; that is what marks a document
+  dirty and what Phase 3 will write to the open file.
+- the shell's Save asks for the document explicitly with
+  `{action:'export', format:'xml'}` and receives `{event:'export', xml}`
+  (`createLoadMessage('export')` with the current file data), so the snapshot
+  the shell keeps is produced by the editor, not assembled by the shell.
 
 `{event:'openLink'}` is produced when a link is clicked, and Inkline sets
 `suppressNewWindows: true` so the frame never opens a window itself: links are

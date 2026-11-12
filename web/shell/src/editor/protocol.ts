@@ -21,26 +21,33 @@ export interface EditorSaved {
   readonly xml: string;
 }
 
-export type EditorEvent = EditorInit | EditorLoaded | EditorSaved;
+export interface EditorExported {
+  readonly event: "export";
+  readonly xml: string;
+}
+
+export type EditorEvent = EditorInit | EditorLoaded | EditorSaved | EditorExported;
 
 export interface LoadAction {
   readonly action: "load";
   readonly xml: string;
+  readonly autosave: 1;
 }
 
-export interface SaveAction {
-  readonly action: "invokeAction";
-  readonly actionName: "save";
+export interface ExportAction {
+  readonly action: "export";
+  readonly format: "xml";
 }
 
-export type EditorAction = LoadAction | SaveAction;
+export type EditorAction = LoadAction | ExportAction;
 
 export function parseEditorEvent(payload: unknown): EditorEvent | null {
-  if (typeof payload !== "object" || payload === null) {
+  const message = readMessage(payload);
+
+  if (message === null) {
     return null;
   }
 
-  const message = payload as Record<string, unknown>;
   const name = message.event;
 
   if (name === "init") {
@@ -51,7 +58,7 @@ export function parseEditorEvent(payload: unknown): EditorEvent | null {
     return { event: "load" };
   }
 
-  if (name === "save" || name === "autosave") {
+  if (name === "save" || name === "autosave" || name === "export") {
     const xml = message.xml;
     return typeof xml === "string" ? { event: name, xml } : null;
   }
@@ -59,12 +66,33 @@ export function parseEditorEvent(payload: unknown): EditorEvent | null {
   return null;
 }
 
-export function loadAction(xml: string): LoadAction {
-  return { action: "load", xml };
+function readMessage(payload: unknown): Record<string, unknown> | null {
+  if (typeof payload === "string") {
+    try {
+      const parsed: unknown = JSON.parse(payload);
+      return typeof parsed === "object" && parsed !== null
+        ? (parsed as Record<string, unknown>)
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  return typeof payload === "object" && payload !== null
+    ? (payload as Record<string, unknown>)
+    : null;
 }
 
-export function saveAction(): SaveAction {
-  return { action: "invokeAction", actionName: "save" };
+export function encodeAction(action: EditorAction): string {
+  return JSON.stringify(action);
+}
+
+export function loadAction(xml: string): LoadAction {
+  return { action: "load", xml, autosave: 1 };
+}
+
+export function exportAction(): ExportAction {
+  return { action: "export", format: "xml" };
 }
 
 export function readLanguage(tag: string): EditorLanguage {
