@@ -122,7 +122,7 @@ jobs:
       - name: Report bundle size
         run: |
           du -sh dist dist/editor
-          find dist/assets dist/index.html -type f -printf "%s\t%p\n" | sort -rn"
+          find dist/assets dist/index.html -type f -printf "%s\t%p\n" | sort -rn
 
   android:
     name: Android debug APK
