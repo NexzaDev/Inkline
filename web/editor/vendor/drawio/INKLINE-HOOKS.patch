@@ -1,0 +1,33 @@
+--- a/js/PreConfig.js
++++ b/js/PreConfig.js
+@@ -1,13 +1,10 @@
+-/**
+- * Copyright (c) 2006-2024, JGraph Holdings Ltd
+- * Copyright (c) 2006-2024, draw.io AG
+- */
+-// Overrides of global vars need to be pre-loaded
+ window.DRAWIO_PUBLIC_BUILD = true;
+-window.EXPORT_URL = null; // Replace with the URL of your export server to enable server-side PDF and image export, e.g. https://www.example.com/export. With null, export to PDF uses the print dialog
+-window.DRAWIO_BASE_URL = null; // Replace with path to base of deployment, e.g. https://www.example.com/folder
+-window.DRAWIO_VIEWER_URL = null; // Replace your path to the viewer js, e.g. https://www.example.com/js/viewer.min.js
+-window.DRAWIO_LIGHTBOX_URL = null; // Replace with your lightbox URL, eg. https://www.example.com
++window.EXPORT_URL = null;
++window.DRAWIO_BASE_URL = null;
++window.DRAWIO_VIEWER_URL = null;
++window.DRAWIO_LIGHTBOX_URL = null;
+ window.DRAW_MATH_URL = 'math4/es5';
+-window.DRAWIO_CONFIG = null; // Replace with your custom draw.io configurations. For more details, https://www.drawio.com/doc/faq/configure-diagram-editor
++window.DRAWIO_CONFIG = null;
++window.ALLOW_CUSTOM_PLUGINS = true;
++window.PLUGINS_BASE_PATH = 'plugin/';
+ urlParams['sync'] = 'manual';
+--- a/js/PostConfig.js
++++ b/js/PostConfig.js
+@@ -1,7 +1,2 @@
+-/**
+- * Copyright (c) 2006-2024, JGraph Holdings Ltd
+- * Copyright (c) 2006-2024, draw.io AG
+- */
+-// null'ing of global vars need to be after init.js
+ window.ICONSEARCH_PATH = null;
+ window.ICON_SERVICE_PATH = null;
