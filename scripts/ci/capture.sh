@@ -16,7 +16,7 @@ if [ "$status" -eq 0 ]; then
   exit 0
 fi
 
-selection="$(tail -n 200 "$log")"
+selection="$( { head -n 80 "$log"; tail -n 120 "$log"; } | awk '!seen[$0]++' )"
 payload="$(printf '%s\n' "$selection" | sed -e 's/\x1b\[[0-9;]*[a-zA-Z]//g' -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'NF {printf "%s%%0A", $0}')"
 
 echo "::error title=${title}::${payload:0:20000}"
