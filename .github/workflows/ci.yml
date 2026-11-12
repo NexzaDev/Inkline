@@ -115,6 +115,10 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Check the vendored editor
+        working-directory: .
+        run: scripts/vendor-drawio.sh check
+
       - name: Report bundle size
         run: |
           find dist -type f -printf "%s\t%p\n" | sort -rn

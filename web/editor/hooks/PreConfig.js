@@ -1,0 +1,10 @@
+window.DRAWIO_PUBLIC_BUILD = true;
+window.EXPORT_URL = null;
+window.DRAWIO_BASE_URL = null;
+window.DRAWIO_VIEWER_URL = null;
+window.DRAWIO_LIGHTBOX_URL = null;
+window.DRAW_MATH_URL = 'math4/es5';
+window.DRAWIO_CONFIG = null;
+window.ALLOW_CUSTOM_PLUGINS = true;
+window.PLUGINS_BASE_PATH = 'plugin/';
+urlParams['sync'] = 'manual';
