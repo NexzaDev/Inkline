@@ -16,11 +16,14 @@ if [ "$status" -eq 0 ]; then
   exit 0
 fi
 
-context="$(grep -A 8 -B 2 -E '^error(\[|:)' "$log" | head -n 160)"
-selection="$( { printf '%s\n' "$context"; tail -n 60 "$log"; } | awk 'NF && !seen[$0]++' )"
-payload="$(printf '%s\n' "$selection" | sed -e 's/\x1b\[[0-9;]*[a-zA-Z]//g' -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'NF {printf "%s%%0A", $0}')"
+clean="$(mktemp)"
+sed -e 's/\x1b\[[0-9;]*[a-zA-Z]//g' "$log" > "$clean"
+
+context="$(grep -A 8 -B 2 -E '^error(\[|:)' "$clean" | head -n 160)"
+selection="$( { printf '%s\n' "$context"; tail -n 60 "$clean"; } | awk 'NF && !seen[$0]++' )"
+payload="$(printf '%s\n' "$selection" | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'NF {printf "%s%%0A", $0}')"
 
 echo "::error title=${title}::${payload:0:20000}"
 
-rm -f "$log"
+rm -f "$log" "$clean"
 exit "$status"
