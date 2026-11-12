@@ -16,7 +16,7 @@ if [ "$status" -eq 0 ]; then
   exit 0
 fi
 
-selection="$( { grep -E '^(error|Error|[a-z-]+\[[a-z-]+\]:)' "$log" | head -n 60; tail -n 60 "$log"; } | awk '!seen[$0]++' )"
+selection="$(tail -n 200 "$log")"
 payload="$(printf '%s\n' "$selection" | sed -e 's/\x1b\[[0-9;]*[a-zA-Z]//g' -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'NF {printf "%s%%0A", $0}')"
 
 echo "::error title=${title}::${payload:0:20000}"

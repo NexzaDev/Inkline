@@ -9,7 +9,9 @@ targets = [
 [advisories]
 version = 2
 yanked = "deny"
-ignore = []
+ignore = [
+  { id = "RUSTSEC-2024-0370", reason = "proc-macro-error is only reachable through the GTK stack that the desktop build of tao pulls in; the Android build never compiles it and the advisory publishes no patched version" },
+]
 
 [licenses]
 version = 2

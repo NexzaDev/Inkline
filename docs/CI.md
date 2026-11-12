@@ -23,9 +23,25 @@ dependencies.
 `cargo-deny` 0.20.2 is installed as a prebuilt binary and run as a plain
 command, rather than through the upstream action. The action is a container
 whose findings only ever appear in the step log; running the binary here means
-the findings reach the annotations like every other failure. The check covers
-the whole workspace, including the Tauri dependency tree, because licence and
-advisory checks do not need compilation.
+the findings reach the annotations like every other failure. The four checks
+run as four steps, so a failure names itself in the check list instead of
+burying which of licences, advisories, bans or sources objected. They cover the
+whole workspace, including the Tauri dependency tree, because none of them needs
+compilation.
+
+One advisory is ignored. `proc-macro-error` reaches the graph only through the
+GTK crates that `tao` pulls in for a desktop Linux build, which is not a target
+of this project, and the advisory publishes no patched release. The ignore is a
+single entry in `deny.toml` carrying that reason, so removing it later is one
+line.
+
+The Android NDK is the one the runner image already ships, selected by prefix so
+Rust and Gradle agree on a single installation, instead of being downloaded by a
+third-party action: the download that action produced was missing the `clang`
+binary its own driver scripts call, which failed only at link time and looked
+like a compiler bug. A verification step runs the NDK's own compiler for the
+target chosen by `minSdkVersion` before the build starts, so a broken
+installation is reported as a broken installation.
 
 ## Pinned actions
 
@@ -41,7 +57,6 @@ workflow files carry no comments.
 | `actions/upload-artifact` | v7.0.2 | `cf430e030ddbb5b0abf93d22962f4752f3646cd9` |
 | `Swatinem/rust-cache` | v2.9.3 | `d1527c8f67ef9af357290475d4af4b0fab8f12e0` |
 | `android-actions/setup-android` | v4.0.4 | `be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd` |
-| `nttld/setup-ndk` | v1.6.0 | `ed92fe6cadad69be94a966a7ee3271275e62f779` |
 | `taiki-e/install-action` | v2.90.3 | `cfdb7ed4ccc7c7dce37759eae89dc5674b469b39` |
 
 The Rust toolchain is installed with `rustup` from the version in

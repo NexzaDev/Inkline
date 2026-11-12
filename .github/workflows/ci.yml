@@ -59,8 +59,17 @@ jobs:
         with:
           tool: cargo-deny@0.20.2
 
-      - name: Check licences, advisories and duplicate versions
-        run: scripts/ci/capture.sh "cargo deny" cargo-deny --all-features check
+      - name: Check licences
+        run: scripts/ci/capture.sh "cargo deny licences" cargo-deny --all-features check licenses
+
+      - name: Check advisories
+        run: scripts/ci/capture.sh "cargo deny advisories" cargo-deny --all-features check advisories
+
+      - name: Check duplicate and wildcard versions
+        run: scripts/ci/capture.sh "cargo deny bans" cargo-deny --all-features check bans
+
+      - name: Check dependency sources
+        run: scripts/ci/capture.sh "cargo deny sources" cargo-deny --all-features check sources
 
       - name: Publish the resolved lockfile
         if: always()
@@ -168,23 +177,21 @@ jobs:
       - name: Install the build tools
         run: scripts/ci/capture.sh "android build tools" sdkmanager --install "build-tools;37.0.0"
 
-      - name: Install the NDK
-        id: ndk
-        uses: nttld/setup-ndk@ed92fe6cadad69be94a966a7ee3271275e62f779
-        with:
-          ndk-version: r29
-          local-cache: true
+      - name: Select the NDK
+        run: |
+          ndk="$(ls -d "$ANDROID_HOME"/ndk/29.*/ 2>/dev/null | sort -V | tail -n 1)"
+          if [ -z "$ndk" ]; then
+            ndk="$(ls -d "$ANDROID_HOME"/ndk/*/ | sort -V | tail -n 1)"
+          fi
+          printf 'NDK_HOME=%s\n' "${ndk%/}" >> "$GITHUB_ENV"
+          printf 'Chosen NDK: %s\n' "${ndk%/}"
 
       - name: Verify the NDK toolchain
-        env:
-          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
         run: |
-          scripts/ci/note.sh "ndk inventory" "$(ls "$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin" | head -n 30)"
+          scripts/ci/note.sh "ndk inventory" "$(ls "$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin" | tail -n 20)"
           scripts/ci/capture.sh "ndk" "$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android26-clang" --version
 
       - name: Build the APK
-        env:
-          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
         run: scripts/ci/capture.sh "android build" npx tauri android build --debug --apk --target aarch64 --ci
 
       - name: Report APK size
