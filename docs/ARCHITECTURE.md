@@ -169,15 +169,21 @@ rather than mutating a live editor.
 | ------ | -------------------- | -------------------------------- |
 | `load` | Provide the document | `js/diagramly/EditorUi.js:32447` |
 
-`load` carries `xml` and nothing else. The reader does not send `fit`,
-`viewbox`, `snapshot`, `export`, `invokeAction`, `resetEditor`, `merge` or the
-diff actions. The editor's remaining actions exist only in editable mode, and
-the shell has no surface for them: a reader with buttons is an editor with its
-most important button missing.
+`load` carries `xml`, `fit: true`, `border: 24` and `maxFitScale: 1`. Nothing
+else. The reader does not send `viewbox`, `snapshot`, `export`, `invokeAction`,
+`resetEditor`, `merge` or the diff actions. Those exist only in editable mode,
+and the shell has no surface for them: a reader with buttons is an editor with
+its most important button missing.
 
-The frame is left to fit the diagram itself, as it does on `load`. The owner's
-gesture is pan and pinch; anything the shell decided about the viewport would be
-undone by the first pinch anyway.
+`fit` is not a convenience. A `.graph` file records its own viewport in the
+`dx` and `dy` attributes of `mxGraphModel`, and those numbers came from whatever
+screen authored it. A document written on a desktop, or written by hand, can
+therefore open scrolled far away from its own content: the first build of the
+reader showed an empty canvas for exactly that reason. Fitting on load makes the
+authoring viewport irrelevant, which for a reader is the only correct answer.
+`maxFitScale: 1` keeps a small diagram from being blown up to fill a tablet, and
+the border keeps content off the glass edge. Pinching afterwards is entirely the
+editor's business.
 
 ### 4.4 Events the frame sends
 

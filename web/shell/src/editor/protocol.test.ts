@@ -11,12 +11,41 @@ import {
 describe("parseEditorEvent", () => {
   it("recognises the handshake", () => {
     expect(parseEditorEvent({ event: "init" })).toEqual({ event: "init" });
-    expect(parseEditorEvent({ event: "load" })).toEqual({ event: "load" });
+    expect(parseEditorEvent({ event: "load" })).toEqual({
+      event: "load",
+      modelBounds: null,
+      scale: null,
+    });
   });
 
   it("reads the json strings the editor actually sends", () => {
     expect(parseEditorEvent('{"event":"init"}')).toEqual({ event: "init" });
-    expect(parseEditorEvent('{"event":"load","xml":"<mxfile />"}')).toEqual({ event: "load" });
+    expect(parseEditorEvent('{"event":"load","xml":"<mxfile />"}')).toEqual({
+      event: "load",
+      modelBounds: null,
+      scale: null,
+    });
+  });
+
+  it("takes the size of what it drew, which is the only proof it drew anything", () => {
+    const message = JSON.stringify({
+      event: "load",
+      scale: 1,
+      modelBounds: { x: 100, y: 140, width: 760, height: 160 },
+      containerSize: { width: 1000, height: 700 },
+    });
+
+    expect(parseEditorEvent(message)).toEqual({
+      event: "load",
+      modelBounds: { width: 760, height: 160 },
+      scale: 1,
+    });
+  });
+
+  it("refuses bounds that are not a size", () => {
+    const empty = { event: "load", modelBounds: { width: 0, height: 0 }, scale: "1" };
+
+    expect(parseEditorEvent(empty)).toEqual({ event: "load", modelBounds: null, scale: null });
   });
 
   it("survives a string that is not a message", () => {
@@ -68,11 +97,21 @@ describe("readLanguage", () => {
 });
 
 describe("actions", () => {
-  it("hands a document to the frame", () => {
-    expect(loadAction("<mxfile />")).toEqual({ action: "load", xml: "<mxfile />" });
+  it("hands a document to the frame and asks it to fit", () => {
+    expect(loadAction("<mxfile />")).toEqual({
+      action: "load",
+      xml: "<mxfile />",
+      fit: true,
+      border: 24,
+      maxFitScale: 1,
+    });
   });
 
   it("sends json strings, which is what the editor parses", () => {
-    expect(encodeAction(loadAction("<mxfile />"))).toBe('{"action":"load","xml":"<mxfile />"}');
+    expect(JSON.parse(encodeAction(loadAction("<mxfile />")))).toMatchObject({
+      action: "load",
+      xml: "<mxfile />",
+      fit: true,
+    });
   });
 });

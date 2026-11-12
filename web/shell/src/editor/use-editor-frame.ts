@@ -7,6 +7,7 @@ import {
   loadAction,
   parseEditorEvent,
   type EditorAction,
+  type EditorBounds,
   type EditorLanguage,
 } from "./protocol";
 
@@ -15,7 +16,7 @@ const START_TIMEOUT_MS = 20000;
 export type EditorStatus =
   | { readonly kind: "empty" }
   | { readonly kind: "connecting" }
-  | { readonly kind: "ready" }
+  | { readonly kind: "ready"; readonly model: EditorBounds | null }
   | { readonly kind: "failed" };
 
 export interface EditorController {
@@ -67,7 +68,7 @@ export function useEditorFrame(language: EditorLanguage, xml: string | null): Ed
         return;
       }
 
-      setStatus({ kind: "ready" });
+      setStatus({ kind: "ready", model: event.modelBounds });
     }
 
     window.addEventListener("message", handleMessage);

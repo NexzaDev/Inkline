@@ -1,7 +1,7 @@
 import { useRef, useState } from "preact/hooks";
 
 import { readGraphDocument, type GraphDocument } from "./document";
-import type { EditorLanguage } from "./protocol";
+import type { EditorBounds, EditorLanguage } from "./protocol";
 import { useEditorFrame, type EditorStatus } from "./use-editor-frame";
 
 export function EditorScreen({ language }: { readonly language: EditorLanguage }) {
@@ -65,6 +65,12 @@ export function EditorScreen({ language }: { readonly language: EditorLanguage }
   );
 }
 
+function describeDocument(document: GraphDocument, model: EditorBounds | null): string {
+  return model === null
+    ? document.name
+    : `${document.name} · ${Math.round(model.width).toString()} × ${Math.round(model.height).toString()}`;
+}
+
 function statusText(status: EditorStatus, document: GraphDocument | null): string {
   switch (status.kind) {
     case "empty":
@@ -72,7 +78,7 @@ function statusText(status: EditorStatus, document: GraphDocument | null): strin
     case "connecting":
       return "Opening the document";
     case "ready":
-      return document === null ? "Ready" : document.name;
+      return document === null ? "Ready" : describeDocument(document, status.model);
     case "failed":
       return "The document did not render";
   }
